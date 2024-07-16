@@ -22,13 +22,12 @@ Another arduino module using SparkFun Spectral Sensor Breakout - AS7262 vor visi
 
 ## connection: 
 
-AS7262        Arduino Nano
----------------------------
+AS7262  ->    Arduino Nano
 GND     ->    GND
 3V3     ->    3.3V
 SDA     ->    A4 (Analog pin 4)
 SCL     ->    A5 (Analog pin 5)
-Button  ->    D2 (Digital pin 2) to GND (button is connected not on AS unit, its cust vable which is connected to gnd for measurement)
+Button        D2 (Digital pin 2) to GND (button is connected not on AS unit, its cust vable which is connected to gnd for measurement)
 
 ## operation 
 hit the button D2+gnd to view last measurements
