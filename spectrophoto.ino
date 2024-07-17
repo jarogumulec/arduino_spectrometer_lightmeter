@@ -23,7 +23,6 @@ void setup() {
 
   // Print instructions
   Serial.println("Press the button to take a measurement.");
-  Serial.println("Wavelength (nm)\tIntensity (µW/cm²)");
 }
 
 void loop() {
@@ -44,22 +43,25 @@ void takeMeasurement() {
   float orange = sensor.getCalibratedOrange();
   float red = sensor.getCalibratedRed();
 
+  // Print the table heading
+  Serial.println("Wavelength (nm);Intensity (µW/cm²)");
+
   // Print the table rows with wavelengths and intensity values
-  Serial.print("450\t\t");
+  Serial.print("450;");
   Serial.println(violet);
 
-  Serial.print("500\t\t");
+  Serial.print("500;");
   Serial.println(blue);
 
-  Serial.print("550\t\t");
+  Serial.print("550;");
   Serial.println(green);
 
-  Serial.print("570\t\t");
+  Serial.print("570;");
   Serial.println(yellow);
 
-  Serial.print("600\t\t");
+  Serial.print("600;");
   Serial.println(orange);
 
-  Serial.print("650\t\t");
+  Serial.print("650;");
   Serial.println(red);
 }
