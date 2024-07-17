@@ -15,6 +15,7 @@
     - SparkFun AS726X
     - Wire (for I2C connection)
 
+
 ## Light Meter
 
 A light meter based on a photoresistor that records light intensity every 5 minutes and stores the data to EEPROM. To start recording, press the button (D2 + GND), which also deletes all previous measurements. Once connected to a PC, you can retrieve data by sending `r` via the Serial Monitor or delete data by sending `c`.
@@ -35,6 +36,10 @@ A light meter based on a photoresistor that records light intensity every 5 minu
 5. Connect to a PC and open the Serial Monitor:
    - Send `r` to retrieve all stored data.
    - Send `c` to clear all stored data.
+
+
+## simple lightmeter
+a simple lightmeter with same connection as previous. Do not store data but it has internal calibration based on UNI-T UT383 llightmeter so outputs data in Lux. tested on linear range 200 - 10000 lux and here it works quite well. 
 
 ## Spectrophotometer
 
