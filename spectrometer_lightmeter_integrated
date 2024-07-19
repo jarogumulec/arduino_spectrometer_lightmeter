@@ -18,6 +18,7 @@ U8GLIB_SSD1306_128X64 oled(OLED_CLK, OLED_MOSI, OLED_CS, OLED_DC, OLED_RESET);
 
 const int button1Pin = 2; // Pin connected to the first button (spectrophotometer)
 const int button2Pin = 3; // Pin connected to the second button (BH1750 light sensor)
+const int button3Pin = 4; // Pin connected to the third button (PAR and CCT)
 
 void setup() {
   Serial.begin(9600); // Initialize serial communication
@@ -39,6 +40,7 @@ void setup() {
 
   pinMode(button1Pin, INPUT_PULLUP); // Set first button pin as input with internal pull-up resistor
   pinMode(button2Pin, INPUT_PULLUP); // Set second button pin as input with internal pull-up resistor
+  pinMode(button3Pin, INPUT_PULLUP); // Set third button pin as input with internal pull-up resistor
 
   sensor.disableIndicator(); // Turn off the sensor's indicator LED
   sensor.setIntegrationTime(100); // Set integration time to 100ms
@@ -46,6 +48,7 @@ void setup() {
   // Print instructions to the serial monitor
   Serial.println("Press the first button to take a spectrophotometer measurement.");
   Serial.println("Press the second button to take a BH1750 light measurement.");
+  Serial.println("Press the third button to calculate PAR and CCT.");
 }
 
 void loop() {
@@ -54,6 +57,9 @@ void loop() {
     delay(500); // Debounce delay
   } else if (digitalRead(button2Pin) == LOW) {
     takeBH1750Measurement(); // Take a BH1750 light measurement when the second button is pressed
+    delay(500); // Debounce delay
+  } else if (digitalRead(button3Pin) == LOW) {
+    calculatePARandCCT(); // Calculate PAR and CCT when the third button is pressed
     delay(500); // Debounce delay
   }
 }
@@ -99,7 +105,7 @@ void takeSpectrophotometerMeasurement() {
     oled.setPrintPos(0, 30); oled.print("-----------------");
     oled.setPrintPos(0, 40); oled.print("Wavelength (nm)");
     oled.setPrintPos(0, 50); oled.print("Light Intensity");
-    oled.setPrintPos(0, 60); oled.print("(uW/cm^2)");
+    oled.setPrintPos(0, 60); oled.print("(uW/cm2)");
   } while (oled.nextPage());
 
   delay(2000); // Wait for 2 seconds
@@ -133,5 +139,63 @@ void takeBH1750Measurement() {
     oled.setPrintPos(0, 40); oled.print("Light Intensity:");
     oled.setPrintPos(0, 50); oled.print(lux);
     oled.setPrintPos(0, 60); oled.print(" lux");
+  } while (oled.nextPage());
+}
+
+void calculatePARandCCT() {
+  // Read spectral data
+  sensor.takeMeasurements(); // Take measurements
+  float values[] = {
+    sensor.getCalibratedViolet(),
+    sensor.getCalibratedBlue(),
+    sensor.getCalibratedGreen(),
+    sensor.getCalibratedYellow(),
+    sensor.getCalibratedOrange(),
+    sensor.getCalibratedRed()
+  };
+
+  // Calculate PAR
+  float par = 0.0;
+  float wavelengths[] = {450, 500, 550, 570, 600, 650};
+  for (int i = 0; i < 6; i++) {
+    if (wavelengths[i] >= 400 && wavelengths[i] <= 700) {
+      par += values[i]; // Simple sum; more accurate methods would use weighting
+    }
+  }
+
+  // Calculate CCT (approximate using chromaticity coordinates)
+  float X = 0.0;
+  float Y = 0.0;
+  float Z = 0.0;
+  float x_weight[] = {0.01, 0.02, 0.04, 0.03, 0.02, 0.01};
+  float y_weight[] = {0.04, 0.08, 0.12, 0.10, 0.06, 0.03};
+  float z_weight[] = {0.10, 0.15, 0.12, 0.07, 0.03, 0.01};
+
+  for (int i = 0; i < 6; i++) {
+    X += values[i] * x_weight[i];
+    Y += values[i] * y_weight[i];
+    Z += values[i] * z_weight[i];
+  }
+
+  float x = X / (X + Y + Z);
+  float y = Y / (X + Y + Z);
+  
+  // Approximation formula for CCT
+  float n = (x - 0.3320) / (0.1858 - y);
+  float CCT = 437 * pow(n, 3) + 3601 * pow(n, 2) + 6861 * n + 5517;
+
+  // Print PAR and CCT to the serial monitor
+  Serial.print("PAR: ");
+  Serial.print(par);
+  Serial.println(" umol/m2/s");
+  Serial.print("CCT: ");
+  Serial.print(CCT);
+  Serial.println(" K");
+
+  // Display PAR and CCT on the OLED
+  oled.firstPage();
+  do {
+    oled.setPrintPos(0, 10); oled.print("PAR: "); oled.print(par); oled.print(" umol/m2/s");
+    oled.setPrintPos(0, 30); oled.print("CCT: "); oled.print(CCT); oled.print(" K");
   } while (oled.nextPage());
 }
