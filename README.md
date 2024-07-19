@@ -47,9 +47,17 @@ An integrated system combining the AS7262 spectrometer and BH1750 light sensor. 
 - **Key Matrix** -> **Arduino Nano**
   - L1      -> D2
   - L2      -> D3
-  - (button 3) -> D4
+  - R1      -> D4
+  - R2      -> D5
 
 ### Operation
+
+- **Home Menu**:
+Lighmeter 24-07-19
+1 - spectral analysis
+2 - luxmeter
+3 - PAR and K
+
 
 - **Button 1**: Triggers the AS7262 spectrometer to measure light intensity at 6 wavelengths (450, 500, 550, 570, 600, 650 nm). Results are displayed on the OLED and printed to the Serial Monitor.
 - **Button 2**: Triggers the BH1750 light sensor to measure ambient light intensity in lux. Results are displayed on the OLED and printed to the Serial Monitor.
@@ -67,8 +75,8 @@ A light meter based on a photoresistor that records light intensity every 5 minu
 
 - **Button**: D2 to GND (press to start measurement, LED blinks 3 times)
 - **Photoresistor**: 
-  - One end to 5V
-  - Other end to both A0 and through a 10k ohm resistor to GND
+- One end to 5V
+- Other end to both A0 and through a 10k ohm resistor to GND
 
 ### Operation
 
@@ -77,8 +85,8 @@ A light meter based on a photoresistor that records light intensity every 5 minu
 3. Every 5 minutes, the light intensity is measured and stored in EEPROM.
 4. After measurements, the LED blinks once.
 5. Connect to a PC and open the Serial Monitor:
-   - Send `r` to retrieve all stored data.
-   - Send `c` to clear all stored data.
+ - Send `r` to retrieve all stored data.
+ - Send `c` to clear all stored data.
 
 ## Simple Light Meter (Deprecated)
 
@@ -99,10 +107,10 @@ An Arduino module using the SparkFun AS7262 Spectral Sensor Breakout for visible
 ### Connection
 
 - **AS7262** -> **Arduino Nano**
-  - GND     -> GND
-  - 3V3     -> 3.3V
-  - SDA     -> A4 (Analog pin 4)
-  - SCL     -> A5 (Analog pin 5)
+- GND     -> GND
+- 3V3     -> 3.3V
+- SDA     -> A4 (Analog pin 4)
+- SCL     -> A5 (Analog pin 5)
 - **Button**: D2 to GND (press to take a measurement)
 
 ### Operation
@@ -122,10 +130,10 @@ Works similarly to the spectrophotometer but uses an additional diode (5700K whi
 ### Connection
 
 - **AS7262** -> **Arduino Nano**
-  - GND     -> GND
-  - 3V3     -> 3.3V
-  - SDA     -> A4 (Analog pin 4)
-  - SCL     -> A5 (Analog pin 5)
+- GND     -> GND
+- 3V3     -> 3.3V
+- SDA     -> A4 (Analog pin 4)
+- SCL     -> A5 (Analog pin 5)
 - **Button**: D2 to GND (press to take a measurement)
 
 ### Operation
@@ -140,9 +148,3 @@ Works similarly to the spectrophotometer but uses an additional diode (5700K whi
 - The previous versions of the light meter, simple light meter, spectrophotometer, and reflected light spectrophotometer are now deprecated.
 - The integrated system includes a key matrix with three buttons for different functionalities, with clear instructions on how to use each button.
 - The CCT calculation is still a work in progress and may not provide accurate results at this stage.
-
-### Dependencies
-
-- **BH1750 Library**: Uploaded as `bh1750.zip`.
-- **U8glib Library**: Uploaded as `u8glib_oled.zip`.
-- **AS726X Library**: Integrated in the Arduino IDE.
