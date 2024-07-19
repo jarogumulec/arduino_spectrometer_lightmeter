@@ -55,24 +55,6 @@ An integrated system combining the AS7262 spectrometer and BH1750 light sensor. 
 - **Button 2**: Triggers the BH1750 light sensor to measure ambient light intensity in lux. Results are displayed on the OLED and printed to the Serial Monitor.
 - **Button 3**: Attempts to calculate PAR (Photosynthetically Active Radiation) and CCT (Correlated Color Temperature). However, the CCT calculation is currently reporting unrealistic values and is a work in progress.
 
-### OLED Display Specifications
-
-- **High Resolution**: 128 x 64 pixels
-- **Viewing Angle**: > 160°
-- **Platform Compatibility**: Fully compatible with Arduino, 51 Series, MSP430, STM32/2, CSR IC, etc.
-- **Ultra-Low Power Consumption**: Only 0.08 W when the entire screen is lit
-- **Power Supply**: 3V ~ 5V DC
-- **Operating Temperature**: -30°C ~ 70°C
-- **Size**: 27 x 27 x 4.1 mm
-- **Pins**:
-  - GND
-  - VCC
-  - D0
-  - D1
-  - RES
-  - DC
-  - CS
-
 ## Light Meter (Deprecated)
 
 A light meter based on a photoresistor that records light intensity every 5 minutes and stores the data to EEPROM. This version is now deprecated in favor of the integrated spectrometer and lightmeter setup.
