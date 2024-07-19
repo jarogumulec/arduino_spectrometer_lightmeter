@@ -60,5 +60,9 @@ An Arduino module using the SparkFun AS7262 Spectral Sensor Breakout for visible
 2. The sensor will measure the light intensity at 6 wavelengths.
 3. The results will be displayed on the Serial Monitor in the format
 
+
 ## reflected light spectrophotometer
 reflected_light.ino file. works similarly but uses diode (5700K white LED with an irradiance of ~600μW/cm2) and additionaly reports the value for Lab coordinates, but so far it gives shit. althoughn now it even calibrates to colorchecker primaries (6 cols). still sucks, work to be done. but even this setup it otuputs spectra which kinda work
+
+## Integrated spectrometer and lightmeter
+integrated spectrometer  AS7262 and lightmeter BH1250 both on I2S. also included is OLED 128x64 display on SPI.  BH1250 needs bh1750.zip library, display  needs u8glib_oled.zip. 
