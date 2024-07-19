@@ -1,0 +1,137 @@
+#include <Wire.h>
+#include <AS726X.h>
+#include <BH1750.h>
+#include <U8glib.h>
+
+AS726X sensor;
+BH1750 luxSensor;
+
+// Pin configuration for the OLED display
+#define OLED_CLK 13  // D13 (SCK)
+#define OLED_MOSI 11 // D11 (MOSI)
+#define OLED_DC 9    // D9 (DC)
+#define OLED_CS 8    // D8 (CS)
+#define OLED_RESET 10 // D10 (RESET)
+
+// Initialize the OLED display
+U8GLIB_SSD1306_128X64 oled(OLED_CLK, OLED_MOSI, OLED_CS, OLED_DC, OLED_RESET);
+
+const int button1Pin = 2; // Pin connected to the first button (spectrophotometer)
+const int button2Pin = 3; // Pin connected to the second button (BH1750 light sensor)
+
+void setup() {
+  Serial.begin(9600); // Initialize serial communication
+  Wire.begin(); // Initialize I2C communication
+
+  // Initialize the AS726X sensor
+  if (sensor.begin()) {
+    Serial.println("AS7262 sensor initialized successfully!");
+  } else {
+    Serial.println("AS7262 sensor initialization failed!");
+    while (1);
+  }
+
+  // Initialize the BH1750 sensor
+  luxSensor.begin();
+
+  // Initialize the OLED display
+  oled.setFont(u8g_font_6x10); // Choose a suitable font
+
+  pinMode(button1Pin, INPUT_PULLUP); // Set first button pin as input with internal pull-up resistor
+  pinMode(button2Pin, INPUT_PULLUP); // Set second button pin as input with internal pull-up resistor
+
+  sensor.disableIndicator(); // Turn off the sensor's indicator LED
+  sensor.setIntegrationTime(100); // Set integration time to 100ms
+
+  // Print instructions to the serial monitor
+  Serial.println("Press the first button to take a spectrophotometer measurement.");
+  Serial.println("Press the second button to take a BH1750 light measurement.");
+}
+
+void loop() {
+  if (digitalRead(button1Pin) == LOW) {
+    takeSpectrophotometerMeasurement(); // Take a spectrophotometer measurement when the first button is pressed
+    delay(500); // Debounce delay
+  } else if (digitalRead(button2Pin) == LOW) {
+    takeBH1750Measurement(); // Take a BH1750 light measurement when the second button is pressed
+    delay(500); // Debounce delay
+  }
+}
+
+void takeSpectrophotometerMeasurement() {
+  sensor.takeMeasurements(); // Take measurements
+
+  // Read calibrated values for each channel
+  float violet = sensor.getCalibratedViolet();
+  float blue = sensor.getCalibratedBlue();
+  float green = sensor.getCalibratedGreen();
+  float yellow = sensor.getCalibratedYellow();
+  float orange = sensor.getCalibratedOrange();
+  float red = sensor.getCalibratedRed();
+
+  // Print the table heading
+  Serial.println("Wavelength (nm);Intensity (µW/cm²)");
+
+  // Print the table rows with wavelengths and intensity values
+  Serial.print("450;");
+  Serial.println(violet);
+
+  Serial.print("500;");
+  Serial.println(blue);
+
+  Serial.print("550;");
+  Serial.println(green);
+
+  Serial.print("570;");
+  Serial.println(yellow);
+
+  Serial.print("600;");
+  Serial.println(orange);
+
+  Serial.print("650;");
+  Serial.println(red);
+
+  // Show heading first
+  oled.firstPage();
+  do {
+    oled.setPrintPos(0, 10); oled.print("-----------------");
+    oled.setPrintPos(0, 20); oled.print(" SPECTROMETER ");
+    oled.setPrintPos(0, 30); oled.print("-----------------");
+    oled.setPrintPos(0, 40); oled.print("Wavelength (nm)");
+    oled.setPrintPos(0, 50); oled.print("Light Intensity");
+    oled.setPrintPos(0, 60); oled.print("(uW/cm^2)");
+  } while (oled.nextPage());
+
+  delay(2000); // Wait for 2 seconds
+
+  // Display the values on the OLED
+  oled.firstPage();
+  do {
+    oled.setPrintPos(0, 10); oled.print("450: "); oled.print(violet);
+    oled.setPrintPos(0, 20); oled.print("500: "); oled.print(blue);
+    oled.setPrintPos(0, 30); oled.print("550: "); oled.print(green);
+    oled.setPrintPos(0, 40); oled.print("570: "); oled.print(yellow);
+    oled.setPrintPos(0, 50); oled.print("600: "); oled.print(orange);
+    oled.setPrintPos(0, 60); oled.print("650: "); oled.print(red);
+  } while (oled.nextPage());
+}
+
+void takeBH1750Measurement() {
+  uint16_t lux = luxSensor.readLightLevel(); // Read the light intensity from the BH1750 sensor
+
+  // Print the light intensity to the serial monitor
+  Serial.print("Light Intensity: ");
+  Serial.print(lux);
+  Serial.println(" lux");
+
+  // Display the values on the OLED
+  oled.firstPage();
+  do {
+    oled.setPrintPos(0, 10); oled.print("-----------------");
+    oled.setPrintPos(0, 20); oled.print("  LIGHT METER  ");
+    oled.setPrintPos(0, 30); oled.print("-----------------");
+    oled.setPrintPos(0, 40); oled.print("Light Intensity:");
+    oled.setPrintPos(0, 50); oled.print(lux);
+    oled.setPrintPos(0, 60); oled.print(" lux");
+  } while (oled.nextPage());
+}
