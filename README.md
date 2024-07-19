@@ -3,22 +3,83 @@
 ## Prerequisites
 
 - **Hardware**:
-  - Photodiode
-  - 10k Resistor
   - AS7262 Visible Spectrometer
+  - BH1750 Light Sensor
   - Arduino Nano (ATMEGA 328P old bootloader)
-  - Push Button
+  - OLED Display (128x64, SPI)
+  - Push Buttons
+  - Key Matrix 2x2 Buttons
+  - (Deprecated) Photodiode
+  - (Deprecated) 10k Resistor
 
 - **Software**:
   - Arduino IDE (version 2.3.2 on macOS)
   - Libraries:
-    - SparkFun AS726X
+    - SparkFun AS726X (integrated)
     - Wire (for I2C connection)
+    - BH1750 (library uploaded as `bh1750.zip`)
+    - U8glib (library uploaded as `u8glib_oled.zip`)
 
+## Integrated Spectrometer and Lightmeter
 
-## Light Meter
+An integrated system combining the AS7262 spectrometer and BH1750 light sensor. This setup includes an OLED display for immediate data visualization. The system uses a key matrix with three buttons to trigger different functionalities. The BH1750 library is required for the light sensor, and the U8glib library is needed for the OLED display.
 
-A light meter based on a photoresistor that records light intensity every 5 minutes and stores the data to EEPROM. To start recording, press the button (D2 + GND), which also deletes all previous measurements. Once connected to a PC, you can retrieve data by sending `r` via the Serial Monitor or delete data by sending `c`.
+### Connection
+
+- **AS7262** -> **Arduino Nano**
+  - GND     -> GND
+  - 3V3     -> 3.3V
+  - SDA     -> A4 (Analog pin 4)
+  - SCL     -> A5 (Analog pin 5)
+- **BH1750** -> **Arduino Nano**
+  - VCC     -> 3.3V or 5V
+  - GND     -> GND
+  - SCL     -> A5 (Analog pin 5)
+  - SDA     -> A4 (Analog pin 4)
+- **OLED Display** -> **Arduino Nano**
+  - GND     -> GND
+  - VCC     -> 5V
+  - D0      -> D13 (SCK)
+  - D1      -> D11 (MOSI)
+  - RES     -> D10 (RESET)
+  - DC      -> D9 (DC)
+  - CS      -> D8 (CS)
+- **Key Matrix** -> **Arduino Nano**
+  - L1      -> D2
+  - L2      -> D3
+  - (button 3) -> D4
+
+### Operation
+
+- **Button 1**: Triggers the AS7262 spectrometer to measure light intensity at 6 wavelengths (450, 500, 550, 570, 600, 650 nm). Results are displayed on the OLED and printed to the Serial Monitor.
+- **Button 2**: Triggers the BH1750 light sensor to measure ambient light intensity in lux. Results are displayed on the OLED and printed to the Serial Monitor.
+- **Button 3**: Attempts to calculate PAR (Photosynthetically Active Radiation) and CCT (Correlated Color Temperature). However, the CCT calculation is currently reporting unrealistic values and is a work in progress.
+
+### OLED Display Specifications
+
+- **High Resolution**: 128 x 64 pixels
+- **Viewing Angle**: > 160°
+- **Platform Compatibility**: Fully compatible with Arduino, 51 Series, MSP430, STM32/2, CSR IC, etc.
+- **Ultra-Low Power Consumption**: Only 0.08 W when the entire screen is lit
+- **Power Supply**: 3V ~ 5V DC
+- **Operating Temperature**: -30°C ~ 70°C
+- **Size**: 27 x 27 x 4.1 mm
+- **Pins**:
+  - GND
+  - VCC
+  - D0
+  - D1
+  - RES
+  - DC
+  - CS
+
+## Light Meter (Deprecated)
+
+A light meter based on a photoresistor that records light intensity every 5 minutes and stores the data to EEPROM. This version is now deprecated in favor of the integrated spectrometer and lightmeter setup.
+
+### Filename
+
+- `lightmeter.ino`
 
 ### Connection
 
@@ -37,13 +98,21 @@ A light meter based on a photoresistor that records light intensity every 5 minu
    - Send `r` to retrieve all stored data.
    - Send `c` to clear all stored data.
 
+## Simple Light Meter (Deprecated)
 
-## simple lightmeter
-a simple lightmeter with same connection as previous. Do not store data but it has internal calibration based on UNI-T UT383 llightmeter so outputs data in Lux. tested on linear range 200 - 10000 lux and here it works quite well. 
+A simple light meter with the same connection as the previous version. It does not store data but outputs data in lux based on internal calibration. Tested on a linear range of 200 - 10000 lux, where it works quite well.
 
-## Spectrophotometer
+### Filename
 
-An Arduino module using the SparkFun AS7262 Spectral Sensor Breakout for visible light. It reports the calibrated light intensity at 6 wavelengths (450, 500, 550, 570, 600, 650 nm) in units of µW/cm². The values are displayed when the button (D2 + GND) is pressed.
+- `lightmeter_simple_reportonly.ino`
+
+## Spectrophotometer (Deprecated)
+
+An Arduino module using the SparkFun AS7262 Spectral Sensor Breakout for visible light. It reports the calibrated light intensity at 6 wavelengths (450, 500, 550, 570, 600, 650 nm) in units of µW/cm². This version is now deprecated in favor of the integrated spectrometer and lightmeter setup.
+
+### Filename
+
+- `spectrophoto.ino`
 
 ### Connection
 
@@ -58,18 +127,40 @@ An Arduino module using the SparkFun AS7262 Spectral Sensor Breakout for visible
 
 1. Press the button (D2 to GND) to take a measurement.
 2. The sensor will measure the light intensity at 6 wavelengths.
-3. The results will be displayed on the Serial Monitor in the format
+3. The results will be displayed on the Serial Monitor in the format.
 
+## Reflected Light Spectrophotometer (Deprecated)
 
-## reflected light spectrophotometer
-reflected_light.ino file. works similarly but uses diode (5700K white LED with an irradiance of ~600μW/cm2) and additionaly reports the value for Lab coordinates, but so far it gives shit. althoughn now it even calibrates to colorchecker primaries (6 cols). still sucks, work to be done. but even this setup it otuputs spectra which kinda work
+Works similarly to the spectrophotometer but uses an additional diode (5700K white LED with an irradiance of ~600μW/cm²) to measure reflected light. Additionally, it reports the value for Lab coordinates, though calibration is still a work in progress. This version is now deprecated in favor of the integrated spectrometer and lightmeter setup.
 
-## Integrated spectrometer and lightmeter
-integrated spectrometer  AS7262 and lightmeter BH1250 both on I2S. also included is OLED 128x64 display on SPI.  BH1250 needs bh1750.zip library, display  needs u8glib_oled.zip. 
+### Filename
 
- includded: modul key matrix 2x2 buttons. connected: L1 and L2 (button board) to D2 and D3 (arduino). 
+- `reflected_light.ino`
 
- ###operation: 
- 
- button 1 triggers spectrometer
- button 2 triggers luxmeter.
+### Connection
+
+- **AS7262** -> **Arduino Nano**
+  - GND     -> GND
+  - 3V3     -> 3.3V
+  - SDA     -> A4 (Analog pin 4)
+  - SCL     -> A5 (Analog pin 5)
+- **Button**: D2 to GND (press to take a measurement)
+
+### Operation
+
+1. Press the button (D2 to GND) to take a measurement.
+2. The sensor will measure the light intensity at 6 wavelengths.
+3. The results, including the Lab coordinates, will be displayed on the Serial Monitor.
+
+## Notes
+
+- The integrated spectrometer and light meter setup is now the primary and recommended configuration.
+- The previous versions of the light meter, simple light meter, spectrophotometer, and reflected light spectrophotometer are now deprecated.
+- The integrated system includes a key matrix with three buttons for different functionalities, with clear instructions on how to use each button.
+- The CCT calculation is still a work in progress and may not provide accurate results at this stage.
+
+### Dependencies
+
+- **BH1750 Library**: Uploaded as `bh1750.zip`.
+- **U8glib Library**: Uploaded as `u8glib_oled.zip`.
+- **AS726X Library**: Integrated in the Arduino IDE.
