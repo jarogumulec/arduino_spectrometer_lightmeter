@@ -66,3 +66,10 @@ reflected_light.ino file. works similarly but uses diode (5700K white LED with a
 
 ## Integrated spectrometer and lightmeter
 integrated spectrometer  AS7262 and lightmeter BH1250 both on I2S. also included is OLED 128x64 display on SPI.  BH1250 needs bh1750.zip library, display  needs u8glib_oled.zip. 
+
+ includded: modul key matrix 2x2 buttons. connected: L1 and L2 (button board) to D2 and D3 (arduino). 
+
+ ###operation: 
+ 
+ button 1 triggers spectrometer
+ button 2 triggers luxmeter.
