@@ -16,9 +16,17 @@ BH1750 luxSensor;
 // Initialize the OLED display
 U8GLIB_SSD1306_128X64 oled(OLED_CLK, OLED_MOSI, OLED_CS, OLED_DC, OLED_RESET);
 
-const int button1Pin = 2; // Pin connected to the first button (spectrophotometer)
-const int button2Pin = 3; // Pin connected to the second button (BH1750 light sensor)
-const int button3Pin = 4; // Pin connected to the third button (PAR and CCT)
+// Button matrix pin configuration
+#define L1 2 // Digital Pin 2
+#define L2 3 // Digital Pin 3
+#define R1 4 // Digital Pin 4
+#define R2 5 // Digital Pin 5
+
+float values[6] = {0};
+unsigned long lastSwitchTime = 0;
+bool showTable = true;
+bool initialScreen = true;
+bool spectrometerActive = false;
 
 void setup() {
   Serial.begin(9600); // Initialize serial communication
@@ -38,88 +46,101 @@ void setup() {
   // Initialize the OLED display
   oled.setFont(u8g_font_6x10); // Choose a suitable font
 
-  pinMode(button1Pin, INPUT_PULLUP); // Set first button pin as input with internal pull-up resistor
-  pinMode(button2Pin, INPUT_PULLUP); // Set second button pin as input with internal pull-up resistor
-  pinMode(button3Pin, INPUT_PULLUP); // Set third button pin as input with internal pull-up resistor
+  pinMode(L1, INPUT_PULLUP); // Set button matrix pins as input with internal pull-up resistors
+  pinMode(L2, INPUT_PULLUP);
+  pinMode(R1, INPUT_PULLUP);
+  pinMode(R2, INPUT_PULLUP);
 
   sensor.disableIndicator(); // Turn off the sensor's indicator LED
   sensor.setIntegrationTime(100); // Set integration time to 100ms
 
   // Print instructions to the serial monitor
-  Serial.println("Press the first button to take a spectrophotometer measurement.");
-  Serial.println("Press the second button to take a BH1750 light measurement.");
-  Serial.println("Press the third button to calculate PAR and CCT.");
+  Serial.println("Press a button to start a measurement.");
+
+  // Directly display the menu
+  displayMenu();
 }
 
 void loop() {
-  if (digitalRead(button1Pin) == LOW) {
-    takeSpectrophotometerMeasurement(); // Take a spectrophotometer measurement when the first button is pressed
+  if (readButton(L1, R1)) {
+    initialScreen = false;
+    spectrometerActive = true;
+    takeSpectrophotometerMeasurement(); // Take a spectrophotometer measurement
     delay(500); // Debounce delay
-  } else if (digitalRead(button2Pin) == LOW) {
-    takeBH1750Measurement(); // Take a BH1750 light measurement when the second button is pressed
+  } else if (readButton(L2, R1)) {
+    initialScreen = false;
+    spectrometerActive = false;
+    takeBH1750Measurement(); // Take a BH1750 light measurement
     delay(500); // Debounce delay
-  } else if (digitalRead(button3Pin) == LOW) {
-    calculatePARandCCT(); // Calculate PAR and CCT when the third button is pressed
+  } else if (readButton(L1, R2)) {
+    initialScreen = false;
+    spectrometerActive = false;
+    calculatePARandCCT(); // Calculate PAR and CCT
     delay(500); // Debounce delay
   }
+
+  if (spectrometerActive && millis() - lastSwitchTime > 2000) {
+    showTable = !showTable;
+    lastSwitchTime = millis();
+    displayData();
+  }
+}
+
+bool readButton(int line, int row) {
+  pinMode(line, OUTPUT);
+  digitalWrite(line, LOW);
+  delay(1); // Short delay to allow pin state to settle
+  bool pressed = !digitalRead(row);
+  pinMode(line, INPUT_PULLUP);
+  return pressed;
+}
+
+void displayMenu() {
+  // Display initial menu screen
+  oled.firstPage();
+  do {
+    oled.setPrintPos(0, 10); oled.print("Lighmeter 24-07-19");
+    oled.drawLine(0, 15, 128, 15); // Straight line across the screen
+    oled.setPrintPos(0, 25); oled.print("1 - spectral analysis");
+    oled.setPrintPos(0, 35); oled.print("2 - luxmeter");
+    oled.setPrintPos(0, 45); oled.print("3 - PAR and K");
+  } while (oled.nextPage());
 }
 
 void takeSpectrophotometerMeasurement() {
   sensor.takeMeasurements(); // Take measurements
 
   // Read calibrated values for each channel
-  float violet = sensor.getCalibratedViolet();
-  float blue = sensor.getCalibratedBlue();
-  float green = sensor.getCalibratedGreen();
-  float yellow = sensor.getCalibratedYellow();
-  float orange = sensor.getCalibratedOrange();
-  float red = sensor.getCalibratedRed();
+  values[0] = sensor.getCalibratedViolet();
+  values[1] = sensor.getCalibratedBlue();
+  values[2] = sensor.getCalibratedGreen();
+  values[3] = sensor.getCalibratedYellow();
+  values[4] = sensor.getCalibratedOrange();
+  values[5] = sensor.getCalibratedRed();
 
   // Print the table heading
   Serial.println("Wavelength (nm);Intensity (µW/cm²)");
 
   // Print the table rows with wavelengths and intensity values
   Serial.print("450;");
-  Serial.println(violet);
+  Serial.println(values[0]);
 
   Serial.print("500;");
-  Serial.println(blue);
+  Serial.println(values[1]);
 
   Serial.print("550;");
-  Serial.println(green);
+  Serial.println(values[2]);
 
   Serial.print("570;");
-  Serial.println(yellow);
+  Serial.println(values[3]);
 
   Serial.print("600;");
-  Serial.println(orange);
+  Serial.println(values[4]);
 
   Serial.print("650;");
-  Serial.println(red);
+  Serial.println(values[5]);
 
-  // Show heading first
-  oled.firstPage();
-  do {
-    oled.setPrintPos(0, 10); oled.print("-----------------");
-    oled.setPrintPos(0, 20); oled.print(" SPECTROMETER ");
-    oled.setPrintPos(0, 30); oled.print("-----------------");
-    oled.setPrintPos(0, 40); oled.print("Wavelength (nm)");
-    oled.setPrintPos(0, 50); oled.print("Light Intensity");
-    oled.setPrintPos(0, 60); oled.print("(uW/cm2)");
-  } while (oled.nextPage());
-
-  delay(2000); // Wait for 2 seconds
-
-  // Display the values on the OLED
-  oled.firstPage();
-  do {
-    oled.setPrintPos(0, 10); oled.print("450: "); oled.print(violet);
-    oled.setPrintPos(0, 20); oled.print("500: "); oled.print(blue);
-    oled.setPrintPos(0, 30); oled.print("550: "); oled.print(green);
-    oled.setPrintPos(0, 40); oled.print("570: "); oled.print(yellow);
-    oled.setPrintPos(0, 50); oled.print("600: "); oled.print(orange);
-    oled.setPrintPos(0, 60); oled.print("650: "); oled.print(red);
-  } while (oled.nextPage());
+  displayData();
 }
 
 void takeBH1750Measurement() {
@@ -133,27 +154,16 @@ void takeBH1750Measurement() {
   // Display the values on the OLED
   oled.firstPage();
   do {
-    oled.setPrintPos(0, 10); oled.print("-----------------");
-    oled.setPrintPos(0, 20); oled.print("  LIGHT METER  ");
-    oled.setPrintPos(0, 30); oled.print("-----------------");
-    oled.setPrintPos(0, 40); oled.print("Light Intensity:");
-    oled.setPrintPos(0, 50); oled.print(lux);
-    oled.setPrintPos(0, 60); oled.print(" lux");
+    oled.drawLine(0, 0, 128, 0); // Straight line across the screen
+    oled.setPrintPos(0, 10); oled.print("LIGHT METER");
+    oled.drawLine(0, 15, 128, 15); // Straight line across the screen
+    oled.setPrintPos(0, 25); oled.print("Light Intensity:");
+    oled.setPrintPos(0, 35); oled.print(lux);
+    oled.setPrintPos(0, 45); oled.print(" lux");
   } while (oled.nextPage());
 }
 
 void calculatePARandCCT() {
-  // Read spectral data
-  sensor.takeMeasurements(); // Take measurements
-  float values[] = {
-    sensor.getCalibratedViolet(),
-    sensor.getCalibratedBlue(),
-    sensor.getCalibratedGreen(),
-    sensor.getCalibratedYellow(),
-    sensor.getCalibratedOrange(),
-    sensor.getCalibratedRed()
-  };
-
   // Calculate PAR
   float par = 0.0;
   float wavelengths[] = {450, 500, 550, 570, 600, 650};
@@ -195,7 +205,53 @@ void calculatePARandCCT() {
   // Display PAR and CCT on the OLED
   oled.firstPage();
   do {
-    oled.setPrintPos(0, 10); oled.print("PAR: "); oled.print(par); oled.print(" umol/m2/s");
-    oled.setPrintPos(0, 30); oled.print("CCT: "); oled.print(CCT); oled.print(" K");
+    oled.drawLine(0, 0, 128, 0); // Straight line across the screen
+    oled.setPrintPos(0, 10); oled.print("PAR AND CCT");
+    oled.drawLine(0, 15, 128, 15); // Straight line across the screen
+    oled.setPrintPos(0, 25); oled.print("PAR: "); oled.print(par); oled.print(" umol/m2/s");
+    oled.setPrintPos(0, 35); oled.print("CCT: "); oled.print(CCT); oled.print(" K");
   } while (oled.nextPage());
+}
+
+void displayData() {
+  if (showTable) {
+    // Display the table
+    oled.firstPage();
+    do {
+      oled.setPrintPos(0, 10); oled.print("450: "); oled.print(values[0]);
+      oled.setPrintPos(0, 20); oled.print("500: "); oled.print(values[1]);
+      oled.setPrintPos(0, 30); oled.print("550: "); oled.print(values[2]);
+      oled.setPrintPos(0, 40); oled.print("570: "); oled.print(values[3]);
+      oled.setPrintPos(0, 50); oled.print("600: "); oled.print(values[4]);
+      oled.setPrintPos(0, 60); oled.print("650: "); oled.print(values[5]);
+    } while (oled.nextPage());
+  } else {
+    // Find the maximum value for normalization
+    float maxValue = 0;
+    for (int i = 0; i < 6; i++) {
+      if (values[i] > maxValue) {
+        maxValue = values[i];
+      }
+    }
+
+    // Display the chart
+    oled.firstPage();
+    do {
+      for (int i = 0; i < 6; i++) {
+        int barHeight = map(values[i], 0, maxValue, 0, 50); // Normalize values to fit the display height
+        oled.drawBox(20 + i * 18, 50 - barHeight, 10, barHeight); // Adjust spacing and bar width as needed
+
+        // Add labels for x-axis
+        oled.setPrintPos(20 + i * 18, 62); // Position below the bars
+        switch (i) {
+          case 0: oled.print("V"); break; // Violet
+          case 1: oled.print("B"); break; // Blue
+          case 2: oled.print("G"); break; // Green
+          case 3: oled.print("Y"); break; // Yellow
+          case 4: oled.print("O"); break; // Orange
+          case 5: oled.print("R"); break; // Red
+        }
+      }
+    } while (oled.nextPage());
+  }
 }
