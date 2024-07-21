@@ -191,6 +191,17 @@ void optimizeSettings() {
     optimalIntegrationTime = settings[4].intTime;
   }
 
+  // Print optimized settings
+  Serial.print("Optimized Settings - Gain: ");
+  switch (optimalGain) {
+    case 1: Serial.print("3.7x"); break;
+    case 2: Serial.print("16x"); break;
+    case 3: Serial.print("64x"); break;
+  }
+  Serial.print(", Integration Time: ");
+  Serial.print(optimalIntegrationTime * 2.8);
+  Serial.println(" ms");
+
   // Use the optimized settings to take a final measurement
   takeSpectrophotometerMeasurement();
   spectrometerActive = true;
