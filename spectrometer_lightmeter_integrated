@@ -82,7 +82,7 @@ void loop() {
   }
 
   if (spectrometerActive && millis() - lastSwitchTime > 2000) {
-    screenState = (screenState + 1) % 2; // Cycle through 2 screens: table and chart
+    screenState = (screenState + 1) % 3; // Cycle through 3 screens: table, chart, and optimized settings
     lastSwitchTime = millis();
     displayData();
   }
@@ -232,6 +232,17 @@ void takeSpectrophotometerMeasurement() {
     Serial.println(rawValues[i]);
   }
 
+  // Print the optimized settings
+  Serial.print("Optimized Integration Time: ");
+  Serial.print(optimalIntegrationTime * 2.8);
+  Serial.println(" ms");
+  Serial.print("Optimized Gain: ");
+  switch (optimalGain) {
+    case 1: Serial.println("3.7x"); break;
+    case 2: Serial.println("16x"); break;
+    case 3: Serial.println("64x"); break;
+  }
+
   displayData();
 }
 
@@ -343,6 +354,21 @@ void displayData() {
           case 4: oled.print("O"); break; // Orange
           case 5: oled.print("R"); break; // Red
         }
+      }
+    } while (oled.nextPage());
+  } else if (screenState == 2) {
+    // Display optimized settings
+    oled.firstPage();
+    do {
+      oled.drawLine(0, 0, 128, 0); // Straight line across the screen
+      oled.setPrintPos(0, 10); oled.print("Optimized Settings");
+      oled.drawLine(0, 15, 128, 15); // Straight line across the screen
+      oled.setPrintPos(0, 25); oled.print("Integration Time: "); oled.print(optimalIntegrationTime * 2.8); oled.print(" ms");
+      oled.setPrintPos(0, 35); oled.print("Gain: ");
+      switch (optimalGain) {
+        case 1: oled.print("3.7x"); break;
+        case 2: oled.print("16x"); break;
+        case 3: oled.print("64x"); break;
       }
     } while (oled.nextPage());
   }
