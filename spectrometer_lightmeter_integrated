@@ -23,10 +23,13 @@ U8GLIB_SSD1306_128X64 oled(OLED_CLK, OLED_MOSI, OLED_CS, OLED_DC, OLED_RESET);
 #define R2 5 // Digital Pin 5
 
 float values[6] = {0};
+uint16_t rawValues[6] = {0};
 unsigned long lastSwitchTime = 0;
-bool showTable = true;
+int screenState = 0;
 bool initialScreen = true;
 bool spectrometerActive = false;
+byte optimalGain = 2;  // Default to Gain: 16x
+byte optimalIntegrationTime = 100; // Default to Integration Time: 280ms
 
 void setup() {
   Serial.begin(9600); // Initialize serial communication
@@ -52,7 +55,6 @@ void setup() {
   pinMode(R2, INPUT_PULLUP);
 
   sensor.disableIndicator(); // Turn off the sensor's indicator LED
-  sensor.setIntegrationTime(100); // Set integration time to 100ms
 
   // Print instructions to the serial monitor
   Serial.println("Press a button to start a measurement.");
@@ -65,7 +67,7 @@ void loop() {
   if (readButton(L1, R1)) {
     initialScreen = false;
     spectrometerActive = true;
-    takeSpectrophotometerMeasurement(); // Take a spectrophotometer measurement
+    optimizeSettings(); // Optimize the gain and integration time
     delay(500); // Debounce delay
   } else if (readButton(L2, R1)) {
     initialScreen = false;
@@ -80,7 +82,7 @@ void loop() {
   }
 
   if (spectrometerActive && millis() - lastSwitchTime > 2000) {
-    showTable = !showTable;
+    screenState = (screenState + 1) % 2; // Cycle through 2 screens: table and chart
     lastSwitchTime = millis();
     displayData();
   }
@@ -99,7 +101,7 @@ void displayMenu() {
   // Display initial menu screen
   oled.firstPage();
   do {
-    oled.setPrintPos(0, 10); oled.print("Lighmeter 24-07-19");
+    oled.setPrintPos(0, 10); oled.print("Lighmeter 24-07-21");
     oled.drawLine(0, 15, 128, 15); // Straight line across the screen
     oled.setPrintPos(0, 25); oled.print("1 - spectral analysis");
     oled.setPrintPos(0, 35); oled.print("2 - luxmeter");
@@ -107,7 +109,99 @@ void displayMenu() {
   } while (oled.nextPage());
 }
 
+void optimizeSettings() {
+  struct {
+    byte intTime;
+    byte gain;
+  } settings[] = {
+    {50, 1}, // 3.7x
+    {50, 2}, // 16x
+    {100, 2}, // 16x
+    {200, 2}, // 16x
+    {200, 3}  // 64x
+  };
+
+  bool saturated = false;
+
+  for (int i = 0; i < 5; i++) {
+    sensor.setIntegrationTime(settings[i].intTime);
+    sensor.setGain(settings[i].gain);
+    
+    sensor.takeMeasurements(); // Take measurements
+    uint16_t rawValues[6];
+    rawValues[0] = sensor.getViolet();
+    rawValues[1] = sensor.getBlue();
+    rawValues[2] = sensor.getGreen();
+    rawValues[3] = sensor.getYellow();
+    rawValues[4] = sensor.getOrange();
+    rawValues[5] = sensor.getRed();
+
+    // Print the settings and measurement results
+    Serial.print("Run "); Serial.print(i + 1); Serial.print(" - Gain: ");
+    switch (settings[i].gain) {
+      case 1: Serial.print("3.7x"); break;
+      case 2: Serial.print("16x"); break;
+      case 3: Serial.print("64x"); break;
+    }
+    Serial.print(", Integration Time: ");
+    Serial.print(settings[i].intTime * 2.8);
+    Serial.println(" ms");
+
+    Serial.println("Wavelength (nm);Intensity (µW/cm²);Raw Value");
+    for (int j = 0; j < 6; j++) {
+      Serial.print(450 + j * 50); // Wavelength
+      Serial.print(";");
+      switch (j) {
+        case 0: Serial.print(sensor.getCalibratedViolet()); break;
+        case 1: Serial.print(sensor.getCalibratedBlue()); break;
+        case 2: Serial.print(sensor.getCalibratedGreen()); break;
+        case 3: Serial.print(sensor.getCalibratedYellow()); break;
+        case 4: Serial.print(sensor.getCalibratedOrange()); break;
+        case 5: Serial.print(sensor.getCalibratedRed()); break;
+      }
+      Serial.print(";");
+      Serial.println(rawValues[j]); // Raw value
+    }
+
+    // Check if any value is above 50000
+    bool aboveThreshold = false;
+    for (int j = 0; j < 6; j++) {
+      if (rawValues[j] >= 50000) {
+        aboveThreshold = true;
+        break;
+      }
+    }
+
+    if (aboveThreshold) {
+      if (i > 0) { // Use previous settings if current ones are saturated
+        optimalGain = settings[i - 1].gain;
+        optimalIntegrationTime = settings[i - 1].intTime;
+      } else { // If the first setting is saturated, use the first setting
+        optimalGain = settings[i].gain;
+        optimalIntegrationTime = settings[i].intTime;
+      }
+      saturated = true;
+      Serial.println("Stopped due to high signal condition.");
+      break;
+    }
+  }
+
+  if (!saturated) {
+    optimalGain = settings[4].gain;
+    optimalIntegrationTime = settings[4].intTime;
+  }
+
+  // Use the optimized settings to take a final measurement
+  takeSpectrophotometerMeasurement();
+  spectrometerActive = true;
+  lastSwitchTime = millis(); // Reset the switch time to start cycling
+  screenState = 0; // Start with the first screen
+}
+
 void takeSpectrophotometerMeasurement() {
+  sensor.setIntegrationTime(optimalIntegrationTime);
+  sensor.setGain(optimalGain);
+
   sensor.takeMeasurements(); // Take measurements
 
   // Read calibrated values for each channel
@@ -118,27 +212,25 @@ void takeSpectrophotometerMeasurement() {
   values[4] = sensor.getCalibratedOrange();
   values[5] = sensor.getCalibratedRed();
 
+  // Read raw values for each channel
+  rawValues[0] = sensor.getViolet();
+  rawValues[1] = sensor.getBlue();
+  rawValues[2] = sensor.getGreen();
+  rawValues[3] = sensor.getYellow();
+  rawValues[4] = sensor.getOrange();
+  rawValues[5] = sensor.getRed();
+
   // Print the table heading
-  Serial.println("Wavelength (nm);Intensity (µW/cm²)");
+  Serial.println("Wavelength (nm);Intensity (µW/cm²);Raw Value");
 
-  // Print the table rows with wavelengths and intensity values
-  Serial.print("450;");
-  Serial.println(values[0]);
-
-  Serial.print("500;");
-  Serial.println(values[1]);
-
-  Serial.print("550;");
-  Serial.println(values[2]);
-
-  Serial.print("570;");
-  Serial.println(values[3]);
-
-  Serial.print("600;");
-  Serial.println(values[4]);
-
-  Serial.print("650;");
-  Serial.println(values[5]);
+  // Print the table rows with wavelengths, intensity values, and raw values
+  for (int i = 0; i < 6; i++) {
+    Serial.print(450 + i * 50);
+    Serial.print(";");
+    Serial.print(values[i]);
+    Serial.print(";");
+    Serial.println(rawValues[i]);
+  }
 
   displayData();
 }
@@ -214,7 +306,7 @@ void calculatePARandCCT() {
 }
 
 void displayData() {
-  if (showTable) {
+  if (screenState == 0) {
     // Display the table
     oled.firstPage();
     do {
@@ -225,7 +317,7 @@ void displayData() {
       oled.setPrintPos(0, 50); oled.print("600: "); oled.print(values[4]);
       oled.setPrintPos(0, 60); oled.print("650: "); oled.print(values[5]);
     } while (oled.nextPage());
-  } else {
+  } else if (screenState == 1) {
     // Find the maximum value for normalization
     float maxValue = 0;
     for (int i = 0; i < 6; i++) {
