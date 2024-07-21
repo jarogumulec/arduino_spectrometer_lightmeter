@@ -53,15 +53,31 @@ An integrated system combining the AS7262 spectrometer and BH1750 light sensor. 
 ### Operation
 
 - **Home Menu**:
-Lighmeter 24-07-19
-1 - spectral analysis
-2 - luxmeter
-3 - PAR and K
+Lighmeter 24-07-21
+  - 1 - spectral analysis
+  - 2 - luxmeter
+  - 3 - PAR and K
 
 
-- **Button 1**: Triggers the AS7262 spectrometer to measure light intensity at 6 wavelengths (450, 500, 550, 570, 600, 650 nm). Results are displayed on the OLED and printed to the Serial Monitor.
+- **Button 1**: Triggers the AS7262 spectrometer to measure light intensity at 6 wavelengths (450, 500, 550, 570, 600, 650 nm). The program optimizes the gain and integration time settings before taking measurements to avoid saturation. Results are displayed on the OLED and printed to the Serial Monitor.
+- The OLED cycles through three screens: 
+  1. **Chart** of the measurements.
+  2. **Table** of the measurements.
+  3. **Optimized Settings** used for the measurements (gain and integration time).
+
 - **Button 2**: Triggers the BH1750 light sensor to measure ambient light intensity in lux. Results are displayed on the OLED and printed to the Serial Monitor.
-- **Button 3**: Attempts to calculate PAR (Photosynthetically Active Radiation) and CCT (Correlated Color Temperature). However, the CCT calculation is currently reporting unrealistic values and is a work in progress.
+
+- **Button 3**: Attempts to calculate PAR (Photosynthetically Active Radiation) and CCT (Correlated Color Temperature). The PAR calculation is based on the sum of calibrated spectral values. The CCT calculation is an approximation and may not provide accurate results. Both PAR and CCT values are displayed on the OLED and printed to the Serial Monitor.
+
+### Optimization Process
+
+- The program optimizes the gain and integration time settings for the AS7262 spectrometer by iterating through a predefined set of settings:
+1. Integration time: 50ms, Gain: 3.7x
+2. Integration time: 50ms, Gain: 16x
+3. Integration time: 100ms, Gain: 16x
+4. Integration time: 200ms, Gain: 16x
+5. Integration time: 200ms, Gain: 64x
+- The optimization process stops if any raw spectral value exceeds 50,000, indicating potential saturation. The last valid settings are used for the final measurement.
 
 ## Light Meter (Deprecated)
 
@@ -117,7 +133,7 @@ An Arduino module using the SparkFun AS7262 Spectral Sensor Breakout for visible
 
 1. Press the button (D2 to GND) to take a measurement.
 2. The sensor will measure the light intensity at 6 wavelengths.
-3. The results will be displayed on the Serial Monitor in the format.
+3. The results will be displayed on the Serial Monitor.
 
 ## Reflected Light Spectrophotometer (Deprecated)
 
