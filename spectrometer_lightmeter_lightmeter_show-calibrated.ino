@@ -1,0 +1,404 @@
+#include <Wire.h>
+#include <AS726X.h>
+#include <BH1750.h>
+#include <U8glib.h>
+
+AS726X sensor;
+BH1750 luxSensor;
+
+// Pin configuration for the OLED display
+#define OLED_CLK 13  // D13 (SCK)
+#define OLED_MOSI 11 // D11 (MOSI)
+#define OLED_DC 9    // D9 (DC)
+#define OLED_CS 8    // D8 (CS)
+#define OLED_RESET 10 // D10 (RESET)
+
+// Initialize the OLED display
+U8GLIB_SSD1306_128X64 oled(OLED_CLK, OLED_MOSI, OLED_CS, OLED_DC, OLED_RESET);
+
+// Button matrix pin configuration
+#define L1 2 // Digital Pin 2
+#define L2 3 // Digital Pin 3
+#define R1 4 // Digital Pin 4
+#define R2 5 // Digital Pin 5
+
+float values[6] = {0};
+uint16_t rawValues[6] = {0};
+unsigned long lastSwitchTime = 0;
+int screenState = 0;
+bool initialScreen = true;
+bool spectrometerActive = false;
+byte optimalGain = 2;  // Default to Gain: 16x
+byte optimalIntegrationTime = 100; // Default to Integration Time: 280ms
+
+void setup() {
+  Serial.begin(9600); // Initialize serial communication
+  Wire.begin(); // Initialize I2C communication
+
+  // Initialize the AS726X sensor
+  if (sensor.begin()) {
+    Serial.println("AS7262 sensor initialized successfully!");
+  } else {
+    Serial.println("AS7262 sensor initialization failed!");
+    while (1);
+  }
+
+  // Initialize the BH1750 sensor
+  luxSensor.begin();
+
+  // Initialize the OLED display
+  oled.setFont(u8g_font_6x10); // Choose a suitable font
+
+  pinMode(L1, INPUT_PULLUP); // Set button matrix pins as input with internal pull-up resistors
+  pinMode(L2, INPUT_PULLUP);
+  pinMode(R1, INPUT_PULLUP);
+  pinMode(R2, INPUT_PULLUP);
+
+  sensor.disableIndicator(); // Turn off the sensor's indicator LED
+
+  // Print instructions to the serial monitor
+  Serial.println("Press a button to start a measurement.");
+
+  // Directly display the menu
+  displayMenu();
+}
+
+void loop() {
+  if (readButton(L1, R1)) {
+    initialScreen = false;
+    spectrometerActive = true;
+    optimizeSettings(); // Optimize the gain and integration time
+    delay(500); // Debounce delay
+  } else if (readButton(L2, R1)) {
+    initialScreen = false;
+    spectrometerActive = false;
+    takeBH1750Measurement(); // Take a BH1750 light measurement
+    delay(500); // Debounce delay
+  } else if (readButton(L1, R2)) {
+    initialScreen = false;
+    spectrometerActive = false;
+    calculatePARandCCT(); // Calculate PAR and CCT
+    delay(500); // Debounce delay
+  }
+
+  if (spectrometerActive && millis() - lastSwitchTime > 2000) {
+    screenState = (screenState + 1) % 3; // Cycle through 3 screens: table, chart, and optimized settings
+    lastSwitchTime = millis();
+    displayData();
+  }
+}
+
+bool readButton(int line, int row) {
+  pinMode(line, OUTPUT);
+  digitalWrite(line, LOW);
+  delay(1); // Short delay to allow pin state to settle
+  bool pressed = !digitalRead(row);
+  pinMode(line, INPUT_PULLUP);
+  return pressed;
+}
+
+void displayMenu() {
+  // Display initial menu screen
+  oled.firstPage();
+  do {
+    oled.setPrintPos(0, 10); oled.print("Lighmeter 24-07-21");
+    oled.drawLine(0, 15, 128, 15); // Straight line across the screen
+    oled.setPrintPos(0, 25); oled.print("1 - spectral analysis");
+    oled.setPrintPos(0, 35); oled.print("2 - luxmeter");
+    oled.setPrintPos(0, 45); oled.print("3 - PAR and K");
+  } while (oled.nextPage());
+}
+
+void optimizeSettings() {
+  struct {
+    byte intTime;
+    byte gain;
+  } settings[] = {
+    {50, 1}, // 3.7x
+    {50, 2}, // 16x
+    {100, 2}, // 16x
+    {200, 2}, // 16x
+    {200, 3}  // 64x
+  };
+
+  bool saturated = false;
+
+  for (int i = 0; i < 5; i++) {
+    sensor.setIntegrationTime(settings[i].intTime);
+    sensor.setGain(settings[i].gain);
+    
+    sensor.takeMeasurements(); // Take measurements
+    uint16_t rawValues[6];
+    rawValues[0] = sensor.getViolet();
+    rawValues[1] = sensor.getBlue();
+    rawValues[2] = sensor.getGreen();
+    rawValues[3] = sensor.getYellow();
+    rawValues[4] = sensor.getOrange();
+    rawValues[5] = sensor.getRed();
+
+    // Print the settings and measurement results
+    Serial.print("Run "); Serial.print(i + 1); Serial.print(" - Gain: ");
+    switch (settings[i].gain) {
+      case 0: Serial.print("1x"); break;
+      case 1: Serial.print("3.7x"); break;
+      case 2: Serial.print("16x"); break;
+      case 3: Serial.print("64x"); break;
+    }
+    Serial.print(", Integration Time: ");
+    Serial.print(settings[i].intTime * 2.8);
+    Serial.println(" ms");
+
+    Serial.println("Wavelength (nm);Intensity (raw-cal);Raw Value");
+    for (int j = 0; j < 6; j++) {
+      Serial.print(450 + j * 50); // Wavelength
+      Serial.print(";");
+      switch (j) {
+        case 0: Serial.print(sensor.getCalibratedViolet()); break;
+        case 1: Serial.print(sensor.getCalibratedBlue()); break;
+        case 2: Serial.print(sensor.getCalibratedGreen()); break;
+        case 3: Serial.print(sensor.getCalibratedYellow()); break;
+        case 4: Serial.print(sensor.getCalibratedOrange()); break;
+        case 5: Serial.print(sensor.getCalibratedRed()); break;
+      }
+      Serial.print(";");
+      Serial.println(rawValues[j]); // Raw value
+    }
+
+    // Check if any value is above 50000
+    bool aboveThreshold = false;
+    for (int j = 0; j < 6; j++) {
+      if (rawValues[j] >= 50000) {
+        aboveThreshold = true;
+        break;
+      }
+    }
+
+    if (aboveThreshold) {
+      if (i > 0) { // Use previous settings if current ones are saturated
+        optimalGain = settings[i - 1].gain;
+        optimalIntegrationTime = settings[i - 1].intTime;
+      } else { // If the first setting is saturated, use the first setting
+        optimalGain = settings[i].gain;
+        optimalIntegrationTime = settings[i].intTime;
+      }
+      saturated = true;
+      Serial.println("Stopped due to high signal condition.");
+      break;
+    }
+  }
+
+  if (!saturated) {
+    optimalGain = settings[4].gain;
+    optimalIntegrationTime = settings[4].intTime;
+  }
+
+  // Print optimized settings
+  Serial.print("Optimized Settings - Gain: ");
+  switch (optimalGain) {
+    case 0: Serial.print("1x"); break;
+    case 1: Serial.print("3.7x"); break;
+    case 2: Serial.print("16x"); break;
+    case 3: Serial.print("64x"); break;
+  }
+  Serial.print(", Integration Time: ");
+  Serial.print(optimalIntegrationTime * 2.8);
+  Serial.println(" ms");
+
+  // Use the optimized settings to take a final measurement
+  takeSpectrophotometerMeasurement();
+  spectrometerActive = true;
+  lastSwitchTime = millis(); // Reset the switch time to start cycling
+  screenState = 0; // Start with the first screen
+}
+
+void takeSpectrophotometerMeasurement() {
+  sensor.setIntegrationTime(optimalIntegrationTime);
+  sensor.setGain(optimalGain);
+
+  sensor.takeMeasurements(); // Take measurements
+
+  // --- IMPLEMENTACE NORMALIZACE SPEKTRÁLNÍCH DAT ---
+  // Převod vnitřního registru zisku na reálný matematický násobič
+  float actualGain = 1.0;
+  if (optimalGain == 0) actualGain = 1.0;
+  else if (optimalGain == 1) actualGain = 3.7;
+  else if (optimalGain == 2) actualGain = 16.0; // Výrobní kalibrační standard
+  else if (optimalGain == 3) actualGain = 64.0;
+
+  // Výpočet reálného času integrace v milisekundách
+  float actualTimeMs = optimalIntegrationTime * 2.8;
+
+  // Korekční faktor vůči referenční tovární kalibraci (16x zisk, 166 ms)
+  float correctionFactor = (16.0 / actualGain) * (166.0 / actualTimeMs);
+
+  // Načtení a okamžitá normalizace kalibrovaných hodnot v uW/cm2
+  values[0] = sensor.getCalibratedViolet() * correctionFactor;
+  values[1] = sensor.getCalibratedBlue() * correctionFactor;
+  values[2] = sensor.getCalibratedGreen() * correctionFactor;
+  values[3] = sensor.getCalibratedYellow() * correctionFactor;
+  values[4] = sensor.getCalibratedOrange() * correctionFactor;
+  values[5] = sensor.getCalibratedRed() * correctionFactor;
+
+  // Read raw values for each channel
+  rawValues[0] = sensor.getViolet();
+  rawValues[1] = sensor.getBlue();
+  rawValues[2] = sensor.getGreen();
+  rawValues[3] = sensor.getYellow();
+  rawValues[4] = sensor.getOrange();
+  rawValues[5] = sensor.getRed();
+
+  // Print the table heading
+  Serial.println("Wavelength (nm);Normalized Intensity (uW/cm2);Raw Value");
+
+  // Print the table rows with wavelengths, intensity values, and raw values
+  for (int i = 0; i < 6; i++) {
+    Serial.print(450 + i * 50);
+    Serial.print(";");
+    Serial.print(values[i]);
+    Serial.print(";");
+    Serial.println(rawValues[i]);
+  }
+
+  // Print the optimized settings
+  Serial.print("Optimized Integration Time: ");
+  Serial.print(optimalIntegrationTime * 2.8);
+  Serial.println(" ms");
+  Serial.print("Optimized Gain: ");
+  switch (optimalGain) {
+    case 0: Serial.println("1x"); break;
+    case 1: Serial.println("3.7x"); break;
+    case 2: Serial.println("16x"); break;
+    case 3: Serial.println("64x"); break;
+  }
+
+  displayData();
+}
+
+void takeBH1750Measurement() {
+  uint16_t lux = luxSensor.readLightLevel(); // Read the light intensity from the BH1750 sensor
+
+  // Print the light intensity to the serial monitor
+  Serial.print("Light Intensity: ");
+  Serial.print(lux);
+  Serial.println(" lux");
+
+  // Display the values on the OLED
+  oled.firstPage();
+  do {
+    oled.drawLine(0, 0, 128, 0); // Straight line across the screen
+    oled.setPrintPos(0, 10); oled.print("LIGHT METER");
+    oled.drawLine(0, 15, 128, 15); // Straight line across the screen
+    oled.setPrintPos(0, 25); oled.print("Light Intensity:");
+    oled.setPrintPos(0, 35); oled.print(lux);
+    oled.setPrintPos(0, 45); oled.print(" lux");
+  } while (oled.nextPage());
+}
+
+void calculatePARandCCT() {
+  // Calculate PAR
+  float par = 0.0;
+  float wavelengths[] = {450, 500, 550, 570, 600, 650};
+  for (int i = 0; i < 6; i++) {
+    if (wavelengths[i] >= 400 && wavelengths[i] <= 700) {
+      par += values[i]; // Simple sum; more accurate methods would use weighting
+    }
+  }
+
+  // Calculate CCT (approximate using chromaticity coordinates)
+  float X = 0.0;
+  float Y = 0.0;
+  float Z = 0.0;
+  float x_weight[] = {0.01, 0.02, 0.04, 0.03, 0.02, 0.01};
+  float y_weight[] = {0.04, 0.08, 0.12, 0.10, 0.06, 0.03};
+  float z_weight[] = {0.10, 0.15, 0.12, 0.07, 0.03, 0.01};
+
+  for (int i = 0; i < 6; i++) {
+    X += values[i] * x_weight[i];
+    Y += values[i] * y_weight[i];
+    Z += values[i] * z_weight[i];
+  }
+
+  float x = X / (X + Y + Z);
+  float y = Y / (X + Y + Z);
+  
+  // Approximation formula for CCT
+  float n = (x - 0.3320) / (0.1858 - y);
+  float CCT = 437 * pow(n, 3) + 3601 * pow(n, 2) + 6861 * n + 5517;
+
+  // Print PAR and CCT to the serial monitor
+  Serial.print("PAR: ");
+  Serial.print(par);
+  Serial.println(" umol/m2/s");
+  Serial.print("CCT: ");
+  Serial.print(CCT);
+  Serial.println(" K");
+
+  // Display PAR and CCT on the OLED
+  oled.firstPage();
+  do {
+    oled.drawLine(0, 0, 128, 0); // Straight line across the screen
+    oled.setPrintPos(0, 10); oled.print("PAR AND CCT");
+    oled.drawLine(0, 15, 128, 15); // Straight line across the screen
+    oled.setPrintPos(0, 25); oled.print("PAR: "); oled.print(par); oled.print(" umol/m2/s");
+    oled.setPrintPos(0, 35); oled.print("CCT: "); oled.print(CCT); oled.print(" K");
+  } while (oled.nextPage());
+}
+
+void displayData() {
+  if (screenState == 0) {
+    // Display the table with units
+    oled.firstPage();
+    do {
+      oled.setPrintPos(0, 10); oled.print("450: "); oled.print(values[0]); oled.print(" uW");
+      oled.setPrintPos(0, 20); oled.print("500: "); oled.print(values[1]); oled.print(" uW");
+      oled.setPrintPos(0, 30); oled.print("550: "); oled.print(values[2]); oled.print(" uW");
+      oled.setPrintPos(0, 40); oled.print("570: "); oled.print(values[3]); oled.print(" uW");
+      oled.setPrintPos(0, 50); oled.print("600: "); oled.print(values[4]); oled.print(" uW");
+      oled.setPrintPos(0, 60); oled.print("650: "); oled.print(values[5]); oled.print(" uW");
+    } while (oled.nextPage());
+  } else if (screenState == 1) {
+    // Find the maximum value for normalization
+    float maxValue = 0;
+    for (int i = 0; i < 6; i++) {
+      if (values[i] > maxValue) {
+        maxValue = values[i];
+      }
+    }
+
+    // Display the chart
+    oled.firstPage();
+    do {
+      for (int i = 0; i < 6; i++) {
+        int barHeight = map(values[i], 0, maxValue, 0, 50); // Normalize values to fit the display height
+        oled.drawBox(20 + i * 18, 50 - barHeight, 10, barHeight); // Adjust spacing and bar width as needed
+
+        // Add labels for x-axis
+        oled.setPrintPos(20 + i * 18, 62); // Position below the bars
+        switch (i) {
+          case 0: oled.print("V"); break; // Violet
+          case 1: oled.print("B"); break; // Blue
+          case 2: oled.print("G"); break; // Green
+          case 3: oled.print("Y"); break; // Yellow
+          case 4: oled.print("O"); break; // Orange
+          case 5: oled.print("R"); break; // Red
+        }
+      }
+    } while (oled.nextPage());
+  } else if (screenState == 2) {
+    // Display optimized settings
+    oled.firstPage();
+    do {
+      oled.drawLine(0, 0, 128, 0); // Straight line across the screen
+      oled.setPrintPos(0, 10); oled.print("Optimized Settings");
+      oled.drawLine(0, 15, 128, 15); // Straight line across the screen
+      oled.setPrintPos(0, 25); oled.print("Integration Time: "); oled.print(optimalIntegrationTime * 2.8); oled.print(" ms");
+      oled.setPrintPos(0, 35); oled.print("Gain: ");
+      switch (optimalGain) {
+        case 0: oled.print("1x"); break;
+        case 1: oled.print("3.7x"); break;
+        case 2: oled.print("16x"); break;
+        case 3: oled.print("64x"); break;
+      }
+    } while (oled.nextPage());
+  }
+}
