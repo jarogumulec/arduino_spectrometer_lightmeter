@@ -4,7 +4,7 @@ GY modul spektrálního senzoru na Arduino Nano V3 (ATmega328P), data po USB
 sériové lince, report v Pythonu přes uv – terminál + live graf, volitelně CSV.
 
 ```
-nano_spectrometer/
+arduino_nano_spectrophotometerAS7341/
   firmware/readout_as7341/          readout AS7341 (potvrzeno na modulu)
   viewer/                           Python report (uv)
   docs/                             zapojení, kalibrace, datasheet
@@ -12,7 +12,7 @@ nano_spectrometer/
 
 ## Hardwarová identifikace – vyřešeno
 
-Modul objednán jako AS7343, na desce potisk AS7341. Registry potvrdily
+Modul objednán pod jiným označením, na desce potisk AS7341. Registry potvrdily
 AS7341 (WHOAMI 0x92). Historie v
 [docs/hardware_identification.md](docs/hardware_identification.md).
 

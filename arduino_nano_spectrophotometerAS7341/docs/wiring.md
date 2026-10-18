@@ -2,7 +2,7 @@
 
 ## Desky
 
-- GY-AS7341 breakout (objednán jako AS7343, registry potvrdily AS7341)
+- GY-AS7341 breakout (registry potvrdily AS7341)
 - Arduino Nano V3.0 (ATmega328P); bootloader old i new podle desky
 
 ## Zapojení

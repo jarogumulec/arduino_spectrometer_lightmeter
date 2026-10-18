@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Terminal report + live plot for the ESP32 AS7341/AS7343 spectrometer bridge.
+"""Terminal report + live plot for the AS7341 spectrometer bridge.
 
 Reads the CSV serial protocol from the firmware, prints a table per frame
 in the terminal and (optionally) shows a live matplotlib plot of the spectrum.

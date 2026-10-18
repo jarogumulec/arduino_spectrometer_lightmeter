@@ -12,8 +12,8 @@ Poznámka: Arduino IDE vyžaduje, aby `.ino` bylo ve složce stejného jména �
 sketche po přesunu otevřít zkopírováním/vytvořením odpovídající složky,
 nebo ponechat jako archiv.
 
-## `nano_spectrometer/` – Arduino Nano + AS7341/AS7343 (nový projekt)
+## `arduino_nano_spectrophotometerAS7341/` – Arduino Nano + AS7341 (nový projekt)
 
-GY modul spektrálního senzoru (typ určí identify sketch přes I²C registry)
-na Arduino Nano, report v Pythonu (uv) – terminál + live graf, volitelný CSV.
-Viz `nano_spectrometer/README.md`.
+GY modul spektrálního senzoru AS7341 (potvrzeno registry) na Arduino
+Nano, report v Pythonu (uv) – terminál + live graf, volitelný CSV.
+Viz `arduino_nano_spectrophotometerAS7341/README.md`.
