@@ -1,0 +1,12 @@
+[project]
+name = "esp32-spectrometer-viewer"
+version = "0.1.0"
+description = "Terminal report + live plot for ESP32 AS7341/AS7343 spectrometer bridge"
+requires-python = ">=3.10"
+dependencies = [
+    "pyserial>=3.5",
+    "matplotlib>=3.8",
+]
+
+[tool.uv]
+package = false
