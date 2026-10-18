@@ -1,6 +1,11 @@
-# Identifikace hardware – AS7341 vs AS7343
+# Identifikace hardware – AS7341 vs AS7343 (VYŘEŠENO)
 
-## Situace
+## Výsledek
+
+Modul je **AS7341** – potvrzeno čtením I²C registrů (WHOAMI 0x92 = 0x24).
+Identifikační sketch i readout pro AS7343 byly smazány (2026-10-18).
+
+## Původní situace
 
 Modul objednán jako GY-AS7343 (14 kanálů), na desce je však potištěno AS7341.
 Označení čipu („AM TLL") není čitelné. Popis modulu: level převod, napájení

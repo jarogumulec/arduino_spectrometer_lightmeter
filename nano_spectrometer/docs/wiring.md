@@ -1,16 +1,15 @@
-# Zapojení – Arduino Nano + AS7341 / AS7343
+# Zapojení – Arduino Nano + AS7341
 
 ## Desky
 
-- GY-AS7341/GY-AS7343 breakout (objednán jako AS7343, na modulu potisk
-  AS7341 – typ určí `identify_spectrometer.ino`)
+- GY-AS7341 breakout (objednán jako AS7343, registry potvrdily AS7341)
 - Arduino Nano V3.0 (ATmega328P); bootloader old i new podle desky
 
 ## Zapojení
 
 ```
-GY-AS7341/43          Arduino Nano
-------------          ------------
+GY-AS7341              Arduino Nano
+---------              ------------
 VIN            ->     5V
 GND            ->     GND
 SDA            ->     A4
@@ -29,14 +28,18 @@ Poznámky:
 ## Postup
 
 1. Zapojit dle tabulky, USB do počítače.
-2. Arduino IDE, nahrát `firmware/identify_spectrometer/identify_spectrometer.ino`
-   (deska Arduino Nano; nefunguje-li upload, zkusit Tools > Processor >
-   ATmega328P (Old Bootloader)).
-3. Serial Monitor 115200 → řádek `ID,AS7341` nebo `ID,AS7343`.
-4. Podle výsledku nahrát `readout_as7341.ino` nebo `readout_as7343.ino`
-   – v Arduino IDE nainstalovat Library Managerem `Adafruit AS7341`
-   (příp. `Adafruit AS7343`); BusIO se dotáhne sám.
-5. Report:
+2. Nahrát firmware – Arduino IDE (`firmware/readout_as7341/readout_as7341.ino`,
+   knihovna `Adafruit AS7341` z Library Manageru) nebo z terminálu (board
+   má old bootloader – při potížích se synchronizací držet RESET a pustit
+   1–2 s po startu avrdude):
+
+   ```bash
+   "/Applications/Arduino IDE.app/Contents/Resources/app/lib/backend/resources/arduino-cli" \
+     upload -p /dev/cu.usbserial-110 \
+     --fqbn arduino:avr:nano:cpu=atmega328old \
+     nano_spectrometer/firmware/readout_as7341
+   ```
+3. Report:
 
    ```bash
    cd viewer
@@ -50,10 +53,11 @@ Poznámky:
 | řádek | význam |
 |---|---|
 | `# text` | diagnostika |
-| `ID,...` | identifikace čipu (jen identify sketch) |
+| `ID,AS7341` | identifikace čipu (setup) |
 | `CONF,...` | konfigurace měření |
 | `DATA,seq,wavelength_nm,count` | hodnota kanálu |
+| `FLICK,seq,hz` | flicker detekce (každý 5. rámec): 100/120 Hz, 1 = neznámá frekvence, 0 = nic |
 | `ENDD,seq` | konec rámce |
 | `ERR,message` | chyba |
 
-Wavelength 0 = Clear kanál. Rámec po ~1 s.
+Wavelength 0 = Clear kanál, 910 = NIR. Rámec po ~1 s.
