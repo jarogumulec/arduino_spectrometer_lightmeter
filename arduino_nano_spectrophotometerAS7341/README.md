@@ -7,7 +7,7 @@ sériové lince, report v Pythonu přes uv – terminál + live graf, volitelně
 arduino_nano_spectrophotometerAS7341/
   firmware/readout_as7341/          readout AS7341 (potvrzeno na modulu)
   viewer/                           Python report (uv)
-  docs/                             zapojení, kalibrace, datasheet
+  docs/                             zapojení, kalibrace (datasheet: ../docs_boards_Available/as7341/)
 ```
 
 ## Hardwarová identifikace – vyřešeno
@@ -36,20 +36,27 @@ Raw county 16bit ADC na kanál, start 16×, ATIME=100, ASTEP=999 (tint
 `CONF` řádkem, viewer přepočet přizpůsobí automaticky. Adaptace max
 jedna úroveň za rámec (~1 s). Wavelength 0 = Clear kanál, 910 = NIR.
 
-Kalibrace na µW/cm² zavedena ve vieweru: Ee = count / (Re × r_gain ×
-tint/27,8 ms), Re z [datasheetu](docs/AS7341_DS000504_datasheet.pdf)
-DS000504 v2-00 (Figs 7–16), platné pro warm white 2700 K SPD; pro jiné
-zdroje jen řádový odhad. Clear se reportuje bokem jako broadband osvit,
-NIR vlastní Re (112, warm-white kalibrace). Saturace (count 65535) se
-označuje SAT a do µW/cm² ani grafu se nezapočítává.
+Kalibrace na µW/cm² zavedena ve vieweru: Ee = count × 107,67 / (Re ×
+r_gain × tint/27,8 ms), Re z [datasheetu](../docs_boards_Available/as7341/as7341_datasheet_DS000504.pdf)
+DS000504 v2-00 (Figs 7–16) = county při 107,67 µW/cm² warm white 2700 K
+LED. Výsledek je ekvivalent irradiance 2700 K LED, ne spektrální
+irradiance; pro denní světlo jsou modré kanály nadsazené. Clear se
+reportuje bokem jako broadband osvit, NIR vlastní Re (112, warm-white
+kalibrace). Saturace (count 65535) se označuje SAT a do µW/cm² ani
+grafu se nezapočítává.
 
-**Absolutní škála je systematicky ~100–200× podhodnocená** (Re je
-definováno s difuzorem, modul ho nemá) – relativní spektra použitelná,
-absolutní hodnoty jen jako interní jednotka, dokud neproběhne
-empirická korekce proti BH1750. Detaily, validace i podezřelý kanál
-F2 (445 nm) v [docs/calibration.md](docs/calibration.md).
+Do 2026-10-18 chyběl ve vzorci faktor 107,67 (starší CSV logy jsou o
+něj podhodnocené). Po opravě Clear souhlasí řádově s luxmetrem na
+slunci i v místnosti. Detaily, validace a kanál F2 (445 nm) v
+[docs/calibration.md](docs/calibration.md).
 Luxy zatím ne – Clear kanál nemá V(λ) tvar, empirický koeficient až po
 souběžném měření s BH1750.
+
+Srovnání zdrojů (halogen, LED, denní světlo; AS7341 vs. AS7262 vs.
+luxmetr): [tests.md](tests.md). Digitalizovaná spektrální citlivost
+(Fig. 18) a spektra testovacích LED (Fig. 15) pro budoucí úpravu přepočtu:
+[../docs_boards_Available/as7341/](../docs_boards_Available/as7341/),
+popis v [databázi modulů](../docs_boards_Available/board_dimensions.md#as7341-spektrální-senzor-gy).
 
 ## Flicker
 

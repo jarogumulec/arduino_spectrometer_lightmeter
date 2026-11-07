@@ -21,16 +21,18 @@ import serial.tools.list_ports
 CLEAR_LABELS = {0: "Clear"}  # wavelength 0 marks unfiltered channels
 SATURATION = 65535          # 16-bit ADC full scale; value = clipped, invalid
 
-# AS7341 irradiance responsivity Re [counts/(uW/cm^2)] at AGAIN=64x, tint=27.8ms,
-# calibrated on warm white 2700K LED (datasheet DS000504 v2-00, Figs 7-16).
-# Valid only for broadband warm sources; +/-30% for other SPDs.
+# AS7341 irradiance responsivity Re [counts] at AGAIN=64x, tint=27.8ms for
+# warm white 2700K LED at Ee = REF_EE_UWCM2 (datasheet DS000504 v2-00, Figs 7-16).
+# Result = total irradiance of a 2700K LED giving the same counts in the channel;
+# for other SPDs the channels diverge (blue overestimated for daylight).
 AS7341_RESPONSIVITY = {415: 55.0, 445: 110.0, 480: 210.0, 515: 390.0,
                        555: 590.0, 590: 840.0, 630: 1350.0, 680: 1070.0,
                        0: 1750.0, 910: 112.0}   # 0 = Clear, 910 = NIR
 # Optical gain ratio relative to 64x (datasheet Fig. 16)
 AS7341_GAIN_RATIO = {0.5: 0.008, 1: 0.016, 2: 0.032, 4: 0.065, 8: 0.125,
                      16: 0.25, 32: 0.5, 64: 1.0, 128: 2.0, 256: 3.95, 512: 7.75}
-REF_TINT_MS = 27.8  # ms, reference integration time of Re values
+REF_TINT_MS = 27.8      # ms, reference integration time of Re values
+REF_EE_UWCM2 = 107.67   # uW/cm^2, irradiance at which Re was measured
 
 
 def parse_args():
@@ -93,7 +95,7 @@ def counts_to_irradiance(count: int, wl: int, conf: dict) -> float | None:
     scale = re * ratio * (tint / REF_TINT_MS)
     if scale <= 0:
         return None
-    return count / scale
+    return count * REF_EE_UWCM2 / scale
 
 
 def handle_line(line: str, state: dict):
