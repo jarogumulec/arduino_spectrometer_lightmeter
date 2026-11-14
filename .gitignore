@@ -1,0 +1,4 @@
+*.nes
+
+# NES handheld: generovana data ROM
+esp32_nes_handheld/firmware/Anemoia-ESP32/src/roms_data.h
