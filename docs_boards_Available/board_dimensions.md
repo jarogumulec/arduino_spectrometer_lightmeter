@@ -17,7 +17,7 @@ Původ rozměrů je značen písmenem: **M** – změřeno posuvkou, **V** – �
 | [BH1750 (GY-302)](#bh1750-gy-302-luxmetr) | [bh1750](bh1750/) | I2C 0x23 / 0x5C | 3–5 V | 14 × 19 M | 2× 3 | ~8 M | AS7262, HA luxmetr |
 | [OLED 0,96" 128×64](#oled-096-12864-ssd1306) | [oled_096](oled_096/) | I2C 0x3C | 3,3–5 V | 27 × 27,1 O | 4× 3 | 21 × 23 M | – |
 | [OLED 1,3" 128×64 SH1106](#oled-13-12864-sh1106) | [oled_130_sh1106](oled_130_sh1106/) | I2C 0x3C | 3,3–5 V | 36 × 34 M | 4× 3 | 30,5 × 28 M | AS7262 |
-| [TFT 2,8" IPS 240×320 dotykový](#tft-28-ips-240320-kapacitní-dotyk) | [tft_28_ips_touch](tft_28_ips_touch/) | SPI + I2C (CTP) | 3,3–5 V? | 82 × 50 M | 4× 3 | 76 × 44 M | – |
+| [TFT 2,8" IPS 240×320 dotykový](#tft-28-ips-240320-kapacitní-dotyk) | [tft_28_ips_touch](tft_28_ips_touch/) | SPI + I2C (CTP) | 5 V (logika 3,3–5 V) | 86 × 50 M | 4× 3 | 76 × 44 M | NES handheld (plán) |
 | [DS18B20 sonda 100 cm](#ds18b20-sonda-100-cm-my18e20) | [ds18b20_sonda](ds18b20_sonda/) | 1-Wire | 3–5,5 V | Ø 6 × 50 (pouzdro) V | – | – | – |
 | [SHT31-D (GY)](#sht31-d-gy-teplota-a-vlhkost) | [sht31](sht31/) | I2C 0x44 / 0x45 | 2,4–5,5 V | ? (12 × 10 × 4 V je čip?) | 1× 3 | roh 2,5 / 2,5 M | – |
 | [AHT20 + BMP280](#aht20--bmp280-teplota-vlhkost-tlak) | [aht20_bmp280](aht20_bmp280/) | I2C 0x38 + 0x76/0x77 | 3,3–5 V | 15 × 15 M | 2× 2 | 11 M | – |
@@ -259,16 +259,34 @@ Soubory: [ukázka U8g2 HelloWorld](oled_130_sh1106/oled_130_u8g2_helloworld.ino)
 
 ### TFT 2,8" IPS 240×320, kapacitní dotyk
 
-SPI displej, kapacitní dotyk (CTP) po I2C, slot microSD. Potisk desky: „2.8" TFT SPI 240X320 V1.0". Řadič uveden jako „ILI934Q" – pravděpodobně ILI9341, neověřeno. Položka „Color: 3.5 inch touch" na AliExpressu je chybná, deska je 2,8". Odkaz: [AliExpress](https://www.aliexpress.com/item/1005009266561335.html).
+SPI displej, kapacitní dotyk (CTP) po I2C, slot microSD. Potisk desky: „2.8" TFT SPI 240X320 V1.0". Položka „Color: 3.5 inch touch" na AliExpressu je chybná, deska je 2,8". Odkaz: [AliExpress](https://www.aliexpress.com/item/1005009266561335.html).
+
+Parametry podle tabulky prodejce ([tft_28_foto2](tft_28_ips_touch/tft_28_foto2.avif)), ověřeno nebylo nic:
+
+| Parametr | Hodnota (V) |
+|---|---|
+| SKU | MSP2834 (s dotykem), MSP2833 (bez) |
+| Řadič displeje | ILI9341V, 4vodičové SPI; v popisu na webu uvedeno „ILI934Q" |
+| Rozlišení, barvy | 240 × RGB × 320, 262K |
+| Panel, podsvícení | IPS, 4× bílá LED, 280 cd/m² |
+| Řadič dotyku | FT6336G, kapacitní, I2C |
+| Napájení | 5,0 V; podsvícení 80 mA, příkon 0,4 W |
+| Logika | převodník úrovní na desce, 3,3 V i 5 V MCU |
+| Pin LED | řízení podsvícení přes tranzistor; nezapojený = podsvícení svítí (M 2026-11-14, pull-up na modulu odvozen z chování) |
+| Rozměr modulu | 50,0 × 86,0 × 14,28 mm s dotykem včetně kolíků (bez dotyku 12,78 mm) |
+| LCD / dotyková vrstva | 50,0 × 69,2 × 2,3 mm / 50,0 × 69,2 × 1,0 mm |
+| Provozní teplota | −10 až 50 °C |
+
+Délka 86 mm potvrzena měřením 2026-11-12; dřívější údaj 82 mm byl chybný.
 
 | Parametr | Hodnota |
 |---|---|
-| Deska | 82 × 50 mm M |
+| Deska | 86 × 50 mm M |
 | Výška bez kolíků | 9 mm M |
 | Díry | 4× Ø 3 mm, rozteč 76 × 44 mm M; středy 2,5 mm od okrajů, na straně kolíků 6 mm M |
 | Aktivní plocha | 58 × 44 mm M (58 podél delší strany), začíná 19 mm od strany s kolíky, v kratším rozměru na středu |
 
-**Nutno doměřit, zatím nepoužíváno.** Rozměry děr si neodpovídají: 6 + 76 + 2,5 = 84,5 mm proti délce desky 82 mm a (50 − 44) / 2 = 3 mm proti 2,5 mm. Jednu z hodnot je třeba přeměřit, nejspíš vzdálenost od strany s kolíky (82 − 76 − 2,5 = 3,5 mm). Aktivní plocha odpovídá typickým 43,2 × 57,6 mm pro 2,8" 240×320.
+Doměřeno 2026-11-12: středy děr 7 mm od kratší hrany s kolíky, jinde 3 mm od hran (7 + 76 + 3 = 86 mm); sklo 4,5 mm nad lícem desky; slot microSD u delší hrany na straně pinu VCC, 36–53 mm od hrany s kolíky, karta 3 mm za hranou desky. Aktivní plocha odpovídá typickým 43,2 × 57,6 mm pro 2,8" 240×320.
 | Piny (14) | VCC, GND, LCD_CS, LCD_RST, LCD_RS, SDI(MOSI), SCK, LED, SDO(MISO), CTP_SCL, CTP_RST, CTP_SDA, CTP_INT, SD_CS |
 
 Soubory: [kótovaný výkres](tft_28_ips_touch/tft_28_foto3.avif) (tloušťky skla a modulu), [parametry](tft_28_ips_touch/tft_28_foto2.avif).
@@ -491,7 +509,7 @@ Výška (osa z) včetně kolíků a konektorů je pro návrh krabičky nejdůle�
 | ESP32 Wemos D1 R32 | ověření děr podle souřadnic UNO, pinout |
 | AS7262 | výška Qwiic konektorů |
 | OLED 0,96" | ukázkový kód |
-| TFT 2,8" | zatím nepoužíváno; přeměřit polohu děr na straně kolíků; ověřit řadič (ILI9341?) a řadič dotyku, napájecí napětí logiky, ukázkový kód (TFT_eSPI / Adafruit_ILI9341) |
+| TFT 2,8" | ověřit napájení 3,3 V a čtení SD karty; ukázkový kód je v `esp32_nes_handheld/firmware/test_display` |
 | DS18B20 | fotografie, ukázkový kód (OneWire + DallasTemperature) |
 | SHT31-D | skutečný rozměr desky, ukázkový kód |
 | AHT20 + BMP280 | ukázkový kód, datasheety |

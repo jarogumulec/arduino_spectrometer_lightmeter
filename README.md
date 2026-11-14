@@ -27,3 +27,10 @@ nebo ponechat jako archiv.
 GY modul spektrálního senzoru AS7341 (potvrzeno registry) na Arduino
 Nano, report v Pythonu (uv) – terminál + live graf, volitelný CSV.
 Viz `arduino_nano_spectrophotometerAS7341/README.md`.
+
+### `esp32_nes_handheld/` – ESP32 herní konzole (NES emulátor)
+
+ESP32 DevKit + 2,8" SPI displej (ILI9341V) se slotem microSD, kříž
+a tlačítka, napájení 18650 + TP4056 + MT3608. Základ emulátoru
+Anemoia-ESP32. Stav: kostra, otevřené otázky v
+`esp32_nes_handheld/docs/todo.md`.
